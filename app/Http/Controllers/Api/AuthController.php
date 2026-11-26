@@ -5,64 +5,73 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
+    // POST /api/register
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $data = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|max:255|unique:users',
-            'password' => 'required|string|min:8'
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
         ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors());
-        }
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password)
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
         ]);
-
-        // $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'data' => $user,
-            'message' => 'register berhasil',
-            // 'access_token' => $token,
-            // 'token_type' => 'Bearer'
-        ], 201);
-    }
-
-    public function login(Request $request)
-    {
-        if (! Auth::attempt($request->only('email', 'password'))) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 401);
-        }
-
-        $user = User::where('email', $request->email)->firstOrFail();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login success',
-            'access_token' => $token,
-            'token_type' => 'Bearer'
+            'message' => 'Registrasi berhasil',
+            'user' => $user,
+            'token' => $token,
+        ], 201);
+    }
+
+    // POST /api/login
+    public function login(Request $request)
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        $user = User::where('email', $data['email'])->first();
+
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
+            return response()->json(['message' => 'Email atau password salah'], 401);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login berhasil',
+            'user' => $user,
+            'token' => $token,
         ]);
     }
 
-    public function logout()
+    // GET /api/user  (protected)
+    public function user(Request $request)
     {
-        Auth::user()->tokens()->delete();
-        return response()->json([
-            'message' => 'logout success'
-        ]);
+        $user = $request->user();
+        // -> factions_count & character_cards_count
+        $user->loadCount(['factions', 'characterCards']);
+
+        return response()->json($user);
+    }
+
+    // POST /api/logout  (protected)
+    public function logout(Request $request)
+    {
+        // hapus token yang sedang dipakai saja
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'Logout berhasil']);
     }
 }

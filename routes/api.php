@@ -1,27 +1,22 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CharacterCardController;
+use App\Http\Controllers\Api\FactionController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Di sinilah Anda dapat mendaftarkan rute API untuk aplikasi Anda. Rute-rute ini
-| dimuat oleh RouteServiceProvider di dalam sebuah grup yang
-| ditetapkan ke dalam kelompok middleware "api". Selamat membangun API Anda!
-|
-*/
+// ---------- PUBLIC ----------
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
 
-Route::post('/register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
-Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
-
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
+// ---------- PROTECTED (butuh Bearer Token) ----------
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
-    Route::apiResource('articles', \App\Http\Controllers\Api\ArticleController::class);
+    Route::get('/user', [AuthController::class, 'user']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Tabel 1 (induk): index, store, show, update, destroy
+    Route::apiResource('factions', FactionController::class);
+
+    // Tabel 2 (anak)
+    Route::apiResource('character-cards', CharacterCardController::class);
 });
